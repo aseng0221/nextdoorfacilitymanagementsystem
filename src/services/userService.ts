@@ -1,0 +1,42 @@
+import { firebaseFirestore } from './firebase';
+
+export interface UserProfile {
+  email: string | null;
+  displayName: string | null;
+  walletBalance: number;
+  createdAt: number;
+}
+
+export const createUserProfile = async (uid: string, email: string, displayName: string) => {
+  const userRef = firebaseFirestore.collection('users').doc(uid);
+  const profile: UserProfile = {
+    email,
+    displayName,
+    walletBalance: 0,
+    createdAt: Date.now(),
+  };
+  await userRef.set(profile);
+  return profile;
+};
+
+export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
+  const doc = await firebaseFirestore.collection('users').doc(uid).get();
+  if (doc.data()) {
+    return doc.data() as UserProfile;
+  }
+  return null;
+};
+
+export const topUpWallet = async (uid: string, amount: number) => {
+  const userRef = firebaseFirestore.collection('users').doc(uid);
+  
+  return firebaseFirestore.runTransaction(async (transaction) => {
+    const doc = await transaction.get(userRef);
+    if (!doc.data()) {
+      throw new Error("User does not exist!");
+    }
+    const newBalance = (doc.data()?.walletBalance || 0) + amount;
+    transaction.update(userRef, { walletBalance: newBalance });
+    return newBalance;
+  });
+};

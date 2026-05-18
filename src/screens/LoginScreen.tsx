@@ -1,0 +1,111 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { colors } from '../theme/colors';
+import { firebaseAuth } from '../services/firebase';
+
+type Props = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
+
+export const LoginScreen = ({ navigation }: Props) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const handleLogin = async () => {
+    if (!email || !password) return;
+    setIsLoading(true);
+    try {
+      await firebaseAuth.signInWithEmailAndPassword(email, password);
+      // AppNavigator will handle the state change via onAuthStateChanged
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>NextDoor Facility</Text>
+      
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+      </View>
+
+      <TouchableOpacity 
+        style={styles.button} 
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color={colors.white} />
+        ) : (
+          <Text style={styles.buttonText}>Login</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+        <Text style={styles.linkText}>Don't have an account? Register</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 48,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  buttonText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  linkText: {
+    color: colors.primary,
+    textAlign: 'center',
+    fontSize: 16,
+  },
+});

@@ -8,13 +8,19 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
-
 target 'NextDoorFacility' do
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreExtension', :modular_headers => true
+  pod 'FirebaseFirestoreInternal', :modular_headers => true
+  pod 'FirebaseAuthInterop', :modular_headers => true
+  pod 'FirebaseAppCheckInterop', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+  pod 'FirebaseAuth', :modular_headers => true
+  pod 'FirebaseFirestore', :modular_headers => true
+  pod 'FirebaseSharedSwift', :modular_headers => true
+  pod 'Firebase', :modular_headers => true
+
   config = use_native_modules!
 
   use_react_native!(
@@ -24,11 +30,30 @@ target 'NextDoorFacility' do
   )
 
   post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        if target.respond_to?(:product_type) && target.product_type == "com.apple.product-type.bundle"
+          config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        end
+        # Fix for non-modular includes in framework modules (RNFBApp)
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
+        config.build_settings['HEADER_SEARCH_PATHS'] << ' "${BUILT_PRODUCTS_DIR}/FirebaseAuth/Swift Compatibility Header" "${BUILT_PRODUCTS_DIR}/FirebaseFirestore/Swift Compatibility Header" "${BUILT_PRODUCTS_DIR}/FirebaseSharedSwift/Swift Compatibility Header" "${BUILT_PRODUCTS_DIR}/FirebaseCore/Swift Compatibility Header"'
+      end
+    end
+
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Clean up static vs dynamic linkage flags in xcconfigs
+    Dir.glob(File.join(installer.sandbox.root, "Target Support Files", "**", "*.xcconfig")).each do |file|
+      content = File.read(file)
+      content.gsub!("-weak_framework \"FirebaseFirestoreInternal\"", "")
+      File.write(file, content)
+    end
   end
 end
