@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
 import { colors } from '../theme/colors';
 import { Facility, getFacilities } from '../services/facilityService';
+import { bookFacility } from '../services/bookingService';
+import { useAuthStore } from '../store/authStore';
 
 export const FacilitiesListScreen = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     loadFacilities();
@@ -23,6 +28,50 @@ export const FacilitiesListScreen = () => {
     }
   };
 
+  const handleOpenBookingModal = (facility: Facility) => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to book a facility.');
+      return;
+    }
+    setSelectedFacility(facility);
+    setIsModalVisible(true);
+  };
+
+  const handleConfirmBooking = async (startHour: number) => {
+    if (!user || !selectedFacility) return;
+
+    try {
+      const now = new Date();
+      const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, 0, 0).getTime();
+      const endTime = startTime + 3600000; // 1 hour later
+
+      await bookFacility(user.uid, selectedFacility.id, selectedFacility.name, selectedFacility.pricePerHour, startTime, endTime);
+      Alert.alert('Success', `Successfully booked ${selectedFacility.name}!`);
+      setIsModalVisible(false);
+      setSelectedFacility(null);
+    } catch (error) {
+      console.error("Failed to book facility", error);
+      Alert.alert('Error', 'Failed to book facility. Please try again.');
+    }
+  };
+
+  const renderTimeSlots = () => {
+    // Generate some mock available time slots for today
+    const slots = [9, 10, 11, 13, 14, 15, 16];
+
+    return slots.map(hour => (
+      <TouchableOpacity
+        key={hour}
+        style={styles.timeSlotButton}
+        onPress={() => handleConfirmBooking(hour)}
+      >
+        <Text style={styles.timeSlotText}>
+          {hour.toString().padStart(2, '0')}:00 - {(hour + 1).toString().padStart(2, '0')}:00
+        </Text>
+      </TouchableOpacity>
+    ));
+  };
+
   const renderItem = ({ item }: { item: Facility }) => (
     <View style={styles.card}>
       <View style={styles.imagePlaceholder} />
@@ -36,7 +85,7 @@ export const FacilitiesListScreen = () => {
           <Text style={styles.priceUnit}>/hr</Text>
         </View>
       </View>
-      <TouchableOpacity style={styles.bookButton}>
+      <TouchableOpacity style={styles.bookButton} onPress={() => handleOpenBookingModal(item)}>
         <Text style={styles.bookButtonText}>Book Now</Text>
       </TouchableOpacity>
     </View>
@@ -54,6 +103,31 @@ export const FacilitiesListScreen = () => {
           contentContainerStyle={styles.listContainer}
         />
       )}
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Time for {selectedFacility?.name}</Text>
+            <Text style={styles.modalSubtitle}>Today</Text>
+
+            <View style={styles.timeSlotsContainer}>
+              {renderTimeSlots()}
+            </View>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setIsModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -121,6 +195,60 @@ const styles = StyleSheet.create({
   },
   bookButtonText: {
     color: colors.white,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    minHeight: 300,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: colors.textLight,
+    marginBottom: 16,
+  },
+  timeSlotsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  timeSlotButton: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  timeSlotText: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    padding: 16,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    color: colors.error,
     fontWeight: 'bold',
     fontSize: 16,
   },
