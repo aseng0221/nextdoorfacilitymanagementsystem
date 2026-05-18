@@ -77,3 +77,14 @@ yarn-error.log
 # Agent & Logs
 .agents/
 *build_log.txt
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+firebase-debug.log
+firebase-debug.*.log
