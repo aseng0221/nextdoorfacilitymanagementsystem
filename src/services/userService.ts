@@ -6,6 +6,7 @@ export interface UserProfile {
   fullName?: string;
   phoneNumber?: string;
   walletBalance: number;
+  emailVerified: boolean;
   createdAt: number;
 }
 
@@ -15,6 +16,7 @@ export const createUserProfile = async (uid: string, email: string, displayName:
     email,
     displayName,
     walletBalance: 0,
+    emailVerified: false,
     createdAt: Date.now(),
   };
   await userRef.set(profile);
@@ -47,6 +49,7 @@ export const topUpWallet = async (uid: string, amount: number) => {
         email: null,
         displayName: 'User',
         walletBalance: newBalance,
+        emailVerified: false,
         createdAt: Date.now(),
       });
       return newBalance;

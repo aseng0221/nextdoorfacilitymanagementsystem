@@ -23,6 +23,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
     setIsLoading(true);
     try {
       const userCreds = await firebaseAuth.createUserWithEmailAndPassword(email, password);
+      await userCreds.user.sendEmailVerification();
       await createUserProfile(userCreds.user.uid, email, email.split('@')[0]);
       // AppNavigator will handle the state change
     } catch (error: any) {

@@ -17,13 +17,21 @@ import { RescheduleScreen } from '../screens/RescheduleScreen';
 import { ReviewRescheduleScreen } from '../screens/ReviewRescheduleScreen';
 import { CompleteProfileScreen } from '../screens/CompleteProfileScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { getUserProfile } from '../services/userService';
 import { colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
-  const { user, setUser, isLoading, setLoading, isProfileComplete, setIsProfileComplete, setProfile } = useAuthStore();
+  const {
+    user, setUser,
+    isLoading, setLoading,
+    isProfileComplete, setIsProfileComplete,
+    isEmailVerified, setIsEmailVerified,
+    setProfile
+  } = useAuthStore();
+
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
@@ -34,6 +42,11 @@ export const AppNavigator = () => {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
         });
+
+        // Check email verification status
+        // Refresh token if needed to get latest emailVerified status
+        await firebaseUser.reload();
+        setIsEmailVerified(firebaseUser.emailVerified);
 
         // Check if profile is complete
         try {
@@ -52,6 +65,7 @@ export const AppNavigator = () => {
         setUser(null);
         setProfile(null);
         setIsProfileComplete(false);
+        setIsEmailVerified(false);
       }
       
       if (initializing) setInitializing(false);
@@ -82,6 +96,9 @@ export const AppNavigator = () => {
             <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
           </>
+        ) : !isEmailVerified ? (
+          // Email Verification Flow
+          <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ headerShown: false }} />
         ) : !isProfileComplete ? (
           // Complete Profile Flow
           <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} options={{ headerShown: false }} />
