@@ -3,6 +3,8 @@ import { firebaseFirestore } from './firebase';
 export interface UserProfile {
   email: string | null;
   displayName: string | null;
+  fullName?: string;
+  phoneNumber?: string;
   walletBalance: number;
   createdAt: number;
 }
@@ -17,6 +19,11 @@ export const createUserProfile = async (uid: string, email: string, displayName:
   };
   await userRef.set(profile);
   return profile;
+};
+
+export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
+  const userRef = firebaseFirestore.collection('users').doc(uid);
+  await userRef.update(data);
 };
 
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {

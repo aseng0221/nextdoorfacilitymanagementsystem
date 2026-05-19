@@ -61,7 +61,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
         <MenuItem 
           title="Profile" 
           icon={<User size={32} color={colors.primary} />} 
-          onPress={() => {}} 
+          onPress={() => navigation.navigate('Profile')}
         />
       </View>
     </View>
