@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Modal, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { colors } from '../theme/colors';
 import { Booking, getUserBookings, rescheduleBooking, getFacilityBookingsByDate } from '../services/bookingService';
@@ -199,7 +200,7 @@ export const BookingHistoryScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       {isLoading ? (
         <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
       ) : (
@@ -292,7 +293,7 @@ export const BookingHistoryScreen = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 

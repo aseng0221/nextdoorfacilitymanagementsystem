@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { Facility, getFacilities, seedDummyFacilities } from '../services/facilityService';
@@ -55,7 +56,7 @@ export const FacilitiesListScreen = ({ navigation }: Props) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       {isLoading ? (
         <ActivityIndicator style={styles.loader} size="large" color={colors.primary} />
       ) : (
@@ -66,7 +67,7 @@ export const FacilitiesListScreen = ({ navigation }: Props) => {
           contentContainerStyle={styles.listContainer}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

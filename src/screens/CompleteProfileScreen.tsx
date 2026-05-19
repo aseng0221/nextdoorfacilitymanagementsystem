@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import CountryPicker, { Country } from 'react-native-country-picker-modal';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
@@ -43,55 +44,62 @@ export const CompleteProfileScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Complete Your Profile</Text>
-      <Text style={styles.subtitle}>Please provide your details as per your NRIC.</Text>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Complete Your Profile</Text>
+          <Text style={styles.subtitle}>Please provide your details as per your NRIC.</Text>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. John Doe"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Mobile Number</Text>
-        <View style={styles.phoneContainer}>
-          <View style={styles.countryPickerWrapper}>
-            <CountryPicker
-              withFilter
-              withFlag
-              withCallingCode
-              withCallingCodeButton
-              countryCode={countryCode as any}
-              onSelect={onSelectCountry}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. John Doe"
+              value={fullName}
+              onChangeText={setFullName}
             />
           </View>
-          <TextInput
-            style={[styles.input, styles.phoneInput]}
-            placeholder="123456789"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-          />
-        </View>
-      </View>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleComplete}
-        disabled={isLoading}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={styles.buttonText}>Continue</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Mobile Number</Text>
+            <View style={styles.phoneContainer}>
+              <View style={styles.countryPickerWrapper}>
+                <CountryPicker
+                  withFilter
+                  withFlag
+                  withCallingCode
+                  withCallingCodeButton
+                  countryCode={countryCode as any}
+                  onSelect={onSelectCountry}
+                />
+              </View>
+              <TextInput
+                style={[styles.input, styles.phoneInput]}
+                placeholder="123456789"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleComplete}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.buttonText}>Continue</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -99,8 +107,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 24,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    padding: 24,
   },
   title: {
     fontSize: 28,

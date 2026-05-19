@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import CountryPicker, { Country } from 'react-native-country-picker-modal';
 import { colors } from '../theme/colors';
 import { useAuthStore } from '../store/authStore';
@@ -82,72 +83,79 @@ export const ProfileScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loaderContainer}>
+      <SafeAreaView style={styles.loaderContainer} edges={['bottom', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account Details</Text>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account Details</Text>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email Address</Text>
-          <TextInput
-            style={[styles.input, styles.inputDisabled]}
-            value={profile?.email || ''}
-            editable={false}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. John Doe"
-            value={fullName}
-            onChangeText={setFullName}
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Mobile Number</Text>
-          <View style={styles.phoneContainer}>
-            <View style={styles.countryPickerWrapper}>
-              <CountryPicker
-                withFilter
-                withFlag
-                withCallingCode
-                withCallingCodeButton
-                countryCode={countryCode as any}
-                onSelect={onSelectCountry}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                value={profile?.email || ''}
+                editable={false}
               />
             </View>
-            <TextInput
-              style={[styles.input, styles.phoneInput]}
-              placeholder="123456789"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-            />
-          </View>
-        </View>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.buttonText}>Save Changes</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. John Doe"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Mobile Number</Text>
+              <View style={styles.phoneContainer}>
+                <View style={styles.countryPickerWrapper}>
+                  <CountryPicker
+                    withFilter
+                    withFlag
+                    withCallingCode
+                    withCallingCodeButton
+                    countryCode={countryCode as any}
+                    onSelect={onSelectCountry}
+                  />
+                </View>
+                <TextInput
+                  style={[styles.input, styles.phoneInput]}
+                  placeholder="123456789"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text style={styles.buttonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -155,6 +163,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   loaderContainer: {
     flex: 1,

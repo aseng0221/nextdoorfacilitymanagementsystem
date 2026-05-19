@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Calendar } from 'react-native-calendars';
 import { colors } from '../theme/colors';
@@ -153,8 +154,9 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.imagePlaceholder} />
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.imagePlaceholder} />
 
       <View style={styles.headerInfo}>
         <View style={styles.titleContainer}>
@@ -232,7 +234,8 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
           </Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
