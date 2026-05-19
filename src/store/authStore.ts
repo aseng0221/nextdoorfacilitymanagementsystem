@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { UserProfile } from '../services/userService';
 
 interface User {
   uid: string;
@@ -8,18 +9,22 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  profile: UserProfile | null;
   isLoading: boolean;
   isProfileComplete: boolean;
   setUser: (user: User | null) => void;
+  setProfile: (profile: UserProfile | null) => void;
   setLoading: (isLoading: boolean) => void;
   setIsProfileComplete: (isComplete: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  profile: null,
   isLoading: true,
   isProfileComplete: true,
   setUser: (user) => set({ user }),
+  setProfile: (profile) => set({ profile }),
   setLoading: (isLoading) => set({ isLoading }),
   setIsProfileComplete: (isComplete) => set({ isProfileComplete: isComplete }),
 }));

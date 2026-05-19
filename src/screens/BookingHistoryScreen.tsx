@@ -1,31 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Modal, Alert, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar } from 'react-native-calendars';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import { Booking, getUserBookings, rescheduleBooking, getFacilityBookingsByDate } from '../services/bookingService';
-import { getFacilityById } from '../services/facilityService';
+import { Booking, getUserBookings } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const BookingHistoryScreen = () => {
+type Props = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
+
+export const BookingHistoryScreen = ({ navigation }: Props) => {
   const { user } = useAuthStore();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Reschedule state
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [bookingToReschedule, setBookingToReschedule] = useState<Booking | null>(null);
-  const [facilityPrice, setFacilityPrice] = useState(0);
-  const [bookedSlots, setBookedSlots] = useState<number[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedStartHour, setSelectedStartHour] = useState<number | null>(null);
-  const [durationHours, setDurationHours] = useState<number>(1);
-
-  useEffect(() => {
-    if (user) {
-      loadBookings();
-    }
-  }, [user]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadBookings();
+      }
+    }, [user])
+  );
 
   const loadBookings = async () => {
     setIsLoading(true);
@@ -57,147 +54,13 @@ export const BookingHistoryScreen = () => {
       {item.status === 'Upcoming' && (
         <TouchableOpacity
           style={styles.rescheduleButton}
-          onPress={() => handleOpenReschedule(item)}
+          onPress={() => navigation.navigate('Reschedule', { booking: item })}
         >
           <Text style={styles.rescheduleButtonText}>Reschedule</Text>
         </TouchableOpacity>
       )}
     </View>
   );
-
-  const loadBookingsForReschedule = async (facilityId: string, dateString: string, currentBookingId: string) => {
-    const dateParts = dateString.split('-');
-    const year = parseInt(dateParts[0], 10);
-    const month = parseInt(dateParts[1], 10) - 1;
-    const day = parseInt(dateParts[2], 10);
-    const date = new Date(year, month, day);
-
-    try {
-      const bookings = await getFacilityBookingsByDate(facilityId, date);
-      const bookedHours: number[] = [];
-      bookings.forEach(booking => {
-        if (booking.status !== 'Cancelled' && booking.id !== currentBookingId) {
-          const startHour = new Date(booking.startTime).getHours();
-          const endHour = new Date(booking.endTime).getHours();
-          for (let i = startHour; i < endHour; i++) {
-            bookedHours.push(i);
-          }
-        }
-      });
-      setBookedSlots(bookedHours);
-    } catch (error) {
-      console.error("Failed to load availability for reschedule", error);
-    }
-  };
-
-  const handleOpenReschedule = async (booking: Booking) => {
-    setBookingToReschedule(booking);
-
-    const initialDate = new Date(booking.startTime);
-    // Use local timezone offset to get the correct YYYY-MM-DD
-    const localDate = new Date(initialDate.getTime() - initialDate.getTimezoneOffset() * 60000);
-    const dateStr = localDate.toISOString().split('T')[0];
-
-    setSelectedDate(dateStr);
-    setSelectedStartHour(initialDate.getHours());
-    setDurationHours((booking.endTime - booking.startTime) / 3600000);
-    setBookedSlots([]);
-    setIsModalVisible(true);
-
-    try {
-      const facility = await getFacilityById(booking.facilityId);
-      if (facility) {
-        setFacilityPrice(facility.pricePerHour);
-      }
-      await loadBookingsForReschedule(booking.facilityId, dateStr, booking.id);
-    } catch (error) {
-      console.error("Error opening reschedule modal", error);
-    }
-  };
-
-  const handleDateSelect = (day: any) => {
-    setSelectedDate(day.dateString);
-    setSelectedStartHour(null);
-    setDurationHours(1);
-    if (bookingToReschedule) {
-      loadBookingsForReschedule(bookingToReschedule.facilityId, day.dateString, bookingToReschedule.id);
-    }
-  };
-
-  const handleSelectStartHour = (hour: number) => {
-    setSelectedStartHour(hour);
-    setDurationHours(1);
-  };
-
-  const handleDurationChange = (delta: number) => {
-    if (selectedStartHour === null) return;
-
-    const newDuration = durationHours + delta;
-    if (newDuration < 1 || newDuration > 4) return;
-
-    for (let i = 0; i < newDuration; i++) {
-      const hourToCheck = selectedStartHour + i;
-      if (bookedSlots.includes(hourToCheck) || hourToCheck > 21) {
-        return;
-      }
-    }
-
-    setDurationHours(newDuration);
-  };
-
-  const handleConfirmReschedule = async () => {
-    if (!user || !bookingToReschedule || selectedStartHour === null || !selectedDate) return;
-
-    try {
-      const oldDuration = (bookingToReschedule.endTime - bookingToReschedule.startTime) / 3600000;
-      const priceDifference = (durationHours - oldDuration) * facilityPrice;
-
-      const dateParts = selectedDate.split('-');
-      const year = parseInt(dateParts[0], 10);
-      const month = parseInt(dateParts[1], 10) - 1;
-      const day = parseInt(dateParts[2], 10);
-
-      const newStartTime = new Date(year, month, day, selectedStartHour, 0, 0).getTime();
-      const newEndTime = new Date(year, month, day, selectedStartHour + durationHours, 0, 0).getTime();
-
-      await rescheduleBooking(bookingToReschedule.id, user.uid, newStartTime, newEndTime, priceDifference);
-      Alert.alert('Success', 'Successfully rescheduled booking!');
-      setIsModalVisible(false);
-      setBookingToReschedule(null);
-      loadBookings(); // Reload to show updated times
-    } catch (error) {
-      console.error("Failed to reschedule", error);
-      Alert.alert('Error', 'Failed to reschedule. Please try again.');
-    }
-  };
-
-  const renderTimeSlots = () => {
-    const slots = Array.from({ length: 15 }, (_, i) => i + 7);
-    return slots.map(hour => {
-      const isBooked = bookedSlots.includes(hour);
-      const isSelected = selectedStartHour !== null && hour >= selectedStartHour && hour < selectedStartHour + durationHours;
-      const isStartSlot = selectedStartHour === hour;
-
-      return (
-        <TouchableOpacity
-          key={hour}
-          style={[
-            styles.timeSlotButton,
-            isBooked ? styles.timeSlotBooked : (isSelected ? styles.timeSlotSelected : null)
-          ]}
-          onPress={() => handleSelectStartHour(hour)}
-          disabled={isBooked}
-        >
-          <Text style={[
-            styles.timeSlotText,
-            isBooked ? styles.timeSlotTextBooked : (isSelected ? styles.timeSlotTextSelected : null)
-          ]}>
-            {hour.toString().padStart(2, '0')}:00 {isStartSlot ? '(Start)' : ''}
-          </Text>
-        </TouchableOpacity>
-      );
-    });
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
@@ -212,87 +75,6 @@ export const BookingHistoryScreen = () => {
           ListEmptyComponent={<Text style={styles.emptyText}>No bookings found.</Text>}
         />
       )}
-
-      <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Reschedule Booking</Text>
-            <Text style={styles.modalSubtitle}>{bookingToReschedule?.facilityName}</Text>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Calendar
-                current={selectedDate}
-                onDayPress={handleDateSelect}
-                markedDates={{
-                  [selectedDate]: { selected: true, selectedColor: colors.primary }
-                }}
-                minDate={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
-                theme={{
-                  todayTextColor: colors.primary,
-                  selectedDayBackgroundColor: colors.primary,
-                  arrowColor: colors.primary,
-                }}
-                style={styles.calendar}
-              />
-
-              <Text style={styles.sectionHeading}>Select Start Time</Text>
-              <View style={styles.timeSlotsContainer}>
-                {renderTimeSlots()}
-              </View>
-
-              {selectedStartHour !== null && (
-                <View style={styles.durationContainer}>
-                  <Text style={styles.sectionHeading}>Duration</Text>
-                  <View style={styles.durationControls}>
-                    <TouchableOpacity
-                      style={styles.durationBtn}
-                      onPress={() => handleDurationChange(-1)}
-                    >
-                      <Text style={styles.durationBtnText}>-</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.durationText}>{durationHours} Hour{durationHours > 1 ? 's' : ''}</Text>
-                    <TouchableOpacity
-                      style={styles.durationBtn}
-                      onPress={() => handleDurationChange(1)}
-                    >
-                      <Text style={styles.durationBtnText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.bookingSummary}>
-                    <Text style={styles.summaryText}>
-                      Price Difference: ${(durationHours - ((bookingToReschedule?.endTime || 0) - (bookingToReschedule?.startTime || 0)) / 3600000) * facilityPrice}
-                    </Text>
-                    <Text style={styles.summaryTime}>
-                      {selectedStartHour}:00 - {selectedStartHour + durationHours}:00
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={[styles.confirmButton, selectedStartHour === null && styles.confirmButtonDisabled]}
-                onPress={handleConfirmReschedule}
-                disabled={selectedStartHour === null}
-              >
-                <Text style={styles.confirmButtonText}>Confirm Reschedule</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setIsModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -374,150 +156,5 @@ const styles = StyleSheet.create({
   rescheduleButtonText: {
     color: colors.white,
     fontWeight: 'bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    minHeight: 300,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: colors.textLight,
-    marginBottom: 16,
-  },
-  timeSlotsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  timeSlotButton: {
-    width: '48%',
-    backgroundColor: colors.surface,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  timeSlotSelected: {
-    backgroundColor: colors.primary,
-  },
-  timeSlotBooked: {
-    backgroundColor: '#e0e0e0',
-    borderColor: '#bdbdbd',
-  },
-  timeSlotText: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  timeSlotTextSelected: {
-    color: colors.white,
-  },
-  timeSlotTextBooked: {
-    color: '#9e9e9e',
-    textDecorationLine: 'line-through',
-  },
-  calendar: {
-    marginBottom: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionHeading: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  durationContainer: {
-    backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 16,
-  },
-  durationControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  durationBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  durationBtnText: {
-    fontSize: 24,
-    color: colors.primaryDark,
-    fontWeight: 'bold',
-  },
-  durationText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginHorizontal: 24,
-    color: colors.text,
-  },
-  bookingSummary: {
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 16,
-  },
-  summaryText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  summaryTime: {
-    fontSize: 14,
-    color: colors.textLight,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  confirmButtonDisabled: {
-    backgroundColor: colors.primaryLight,
-  },
-  confirmButtonText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  cancelButton: {
-    padding: 16,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-  },
-  cancelButtonText: {
-    color: colors.error,
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });

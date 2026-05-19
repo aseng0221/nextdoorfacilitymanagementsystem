@@ -12,7 +12,7 @@ type Props = {
 };
 
 export const DashboardScreen = ({ navigation }: Props) => {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
 
   const handleLogout = async () => {
     try {
@@ -36,7 +36,7 @@ export const DashboardScreen = ({ navigation }: Props) => {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.displayName || 'User'}</Text>
+          <Text style={styles.userName}>{profile?.fullName || user?.displayName || 'User'}</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={24} color={colors.primary} />

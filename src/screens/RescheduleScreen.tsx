@@ -4,22 +4,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Calendar } from 'react-native-calendars';
 import { colors } from '../theme/colors';
-import { Facility } from '../services/facilityService';
-import { getFacilityBookingsByDate } from '../services/bookingService';
-import { useAuthStore } from '../store/authStore';
+import { getFacilityById, Facility } from '../services/facilityService';
+import { getFacilityBookingsByDate, Booking } from '../services/bookingService';
 
-// Temporary definition for route params
 type RootStackParamList = {
-  FacilityDetail: { facility: Facility };
+  Reschedule: { booking: Booking };
 };
 
-type Props = NativeStackScreenProps<RootStackParamList, 'FacilityDetail'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Reschedule'>;
 
-export const FacilityDetailScreen = ({ route, navigation }: Props) => {
-  const { facility } = route.params;
-  const { user } = useAuthStore();
+export const RescheduleScreen = ({ route, navigation }: Props) => {
+  const { booking } = route.params;
+  const [facility, setFacility] = useState<Facility | null>(null);
 
-  // Booking state
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [bookedSlots, setBookedSlots] = useState<number[]>([]);
   const [selectedStartHour, setSelectedStartHour] = useState<number | null>(null);
@@ -27,17 +24,26 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
 
   useEffect(() => {
     const init = async () => {
-      const today = new Date();
-      const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
-      const todayStr = localDate.toISOString().split('T')[0];
+      try {
+        const fac = await getFacilityById(booking.facilityId);
+        setFacility(fac);
+      } catch (error) {
+        console.error("Failed to load facility for reschedule", error);
+      }
 
-      setSelectedDate(todayStr);
-      await loadBookingsForFacility(facility.id, todayStr);
+      const initialDate = new Date(booking.startTime);
+      const localDate = new Date(initialDate.getTime() - initialDate.getTimezoneOffset() * 60000);
+      const dateStr = localDate.toISOString().split('T')[0];
+
+      setSelectedDate(dateStr);
+      setSelectedStartHour(initialDate.getHours());
+      setDurationHours((booking.endTime - booking.startTime) / 3600000);
+      await loadBookingsForReschedule(booking.facilityId, dateStr, booking.id);
     };
     init();
-  }, [facility.id]);
+  }, [booking]);
 
-  const loadBookingsForFacility = async (facilityId: string, dateString: string) => {
+  const loadBookingsForReschedule = async (facilityId: string, dateString: string, currentBookingId: string) => {
     const dateParts = dateString.split('-');
     const year = parseInt(dateParts[0], 10);
     const month = parseInt(dateParts[1], 10) - 1;
@@ -47,10 +53,10 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
     try {
       const bookings = await getFacilityBookingsByDate(facilityId, date);
       const bookedHours: number[] = [];
-      bookings.forEach(booking => {
-        if (booking.status !== 'Cancelled') {
-          const startHour = new Date(booking.startTime).getHours();
-          const endHour = new Date(booking.endTime).getHours();
+      bookings.forEach(b => {
+        if (b.status !== 'Cancelled' && b.id !== currentBookingId) {
+          const startHour = new Date(b.startTime).getHours();
+          const endHour = new Date(b.endTime).getHours();
           for (let i = startHour; i < endHour; i++) {
             bookedHours.push(i);
           }
@@ -58,7 +64,7 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
       });
       setBookedSlots(bookedHours);
     } catch (error) {
-      console.error("Failed to fetch bookings", error);
+      console.error("Failed to load availability for reschedule", error);
     }
   };
 
@@ -66,7 +72,7 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
     setSelectedDate(day.dateString);
     setSelectedStartHour(null);
     setDurationHours(1);
-    loadBookingsForFacility(facility.id, day.dateString);
+    loadBookingsForReschedule(booking.facilityId, day.dateString, booking.id);
   };
 
   const handleSelectStartHour = (hour: number) => {
@@ -90,38 +96,35 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
     setDurationHours(newDuration);
   };
 
-  const handleReviewBooking = () => {
-    if (!user) {
-      Alert.alert('Error', 'You must be logged in to book a facility.');
-      return;
-    }
-    if (selectedStartHour === null || !selectedDate) {
+  const handleReviewReschedule = () => {
+    if (selectedStartHour === null || !selectedDate || !facility) {
       Alert.alert('Error', 'Please select a date and start time.');
       return;
     }
+
+    const oldDuration = (booking.endTime - booking.startTime) / 3600000;
+    const priceDifference = (durationHours - oldDuration) * facility.pricePerHour;
 
     const dateParts = selectedDate.split('-');
     const year = parseInt(dateParts[0], 10);
     const month = parseInt(dateParts[1], 10) - 1;
     const day = parseInt(dateParts[2], 10);
 
-    const startTime = new Date(year, month, day, selectedStartHour, 0, 0).getTime();
-    const endTime = new Date(year, month, day, selectedStartHour + durationHours, 0, 0).getTime();
-    const totalPrice = facility.pricePerHour * durationHours;
+    const newStartTime = new Date(year, month, day, selectedStartHour, 0, 0).getTime();
+    const newEndTime = new Date(year, month, day, selectedStartHour + durationHours, 0, 0).getTime();
 
-    // Navigate to Review screen
-    navigation.navigate('ReviewBooking' as never, {
+    navigation.navigate('ReviewReschedule' as never, {
+      booking,
       facility,
-      startTime,
-      endTime,
-      durationHours,
-      totalPrice
+      newStartTime,
+      newEndTime,
+      newDurationHours: durationHours,
+      priceDifference
     } as never);
   };
 
   const renderTimeSlots = () => {
     const slots = Array.from({ length: 15 }, (_, i) => i + 7);
-
     return slots.map(hour => {
       const isBooked = bookedSlots.includes(hour);
       const isSelected = selectedStartHour !== null && hour >= selectedStartHour && hour < selectedStartHour + durationHours;
@@ -150,22 +153,10 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.imagePlaceholder} />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Reschedule Booking</Text>
+        <Text style={styles.subtitle}>{booking.facilityName}</Text>
 
-      <View style={styles.headerInfo}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.facilityName}>{facility.name}</Text>
-          <Text style={styles.facilityType}>{facility.type}</Text>
-        </View>
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>${facility.pricePerHour}</Text>
-          <Text style={styles.priceUnit}>/hr</Text>
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={styles.sectionHeading}>Select Date</Text>
         <Calendar
           current={selectedDate}
           onDayPress={handleDateSelect}
@@ -204,31 +195,16 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
                 <Text style={styles.durationBtnText}>+</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.bookingSummary}>
-              <Text style={styles.summaryText}>
-                Total Price: ${facility.pricePerHour * durationHours}
-              </Text>
-              <Text style={styles.summaryTime}>
-                {selectedStartHour}:00 - {selectedStartHour + durationHours}:00
-              </Text>
-            </View>
           </View>
         )}
 
         <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            selectedStartHour === null && styles.confirmButtonDisabled
-          ]}
-          onPress={handleReviewBooking}
+          style={[styles.confirmButton, selectedStartHour === null && styles.confirmButtonDisabled]}
+          onPress={handleReviewReschedule}
           disabled={selectedStartHour === null}
         >
-          <Text style={styles.confirmButtonText}>
-            Review Booking
-          </Text>
+          <Text style={styles.confirmButtonText}>Review Reschedule</Text>
         </TouchableOpacity>
-      </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -239,65 +215,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  imagePlaceholder: {
-    height: 200,
-    backgroundColor: colors.primaryLight,
-  },
-  headerInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  content: {
     padding: 24,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  titleContainer: {
-    flex: 1,
-    marginRight: 16,
-  },
-  facilityName: {
-    fontSize: 22,
+  title: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 4,
   },
-  facilityType: {
+  subtitle: {
     fontSize: 16,
     color: colors.textLight,
-  },
-  priceContainer: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  price: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  priceUnit: {
-    fontSize: 14,
-    color: colors.textLight,
-  },
-  content: {
-    padding: 24,
+    marginBottom: 24,
   },
   calendar: {
-    marginBottom: 24,
+    marginBottom: 16,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
   },
   sectionHeading: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: 12,
+    marginTop: 8,
   },
   timeSlotsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   timeSlotButton: {
     width: '48%',
@@ -339,7 +288,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   durationBtn: {
     width: 40,
@@ -360,22 +309,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     color: colors.text,
   },
-  bookingSummary: {
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 16,
-  },
-  summaryText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.primary,
-    marginBottom: 4,
-  },
-  summaryTime: {
-    fontSize: 14,
-    color: colors.textLight,
-  },
   confirmButton: {
     backgroundColor: colors.primary,
     padding: 16,
@@ -389,6 +322,6 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: colors.white,
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 16,
   },
 });

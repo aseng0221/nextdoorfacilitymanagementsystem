@@ -12,6 +12,9 @@ import { WalletScreen } from '../screens/WalletScreen';
 import { FacilitiesListScreen } from '../screens/FacilitiesListScreen';
 import { BookingHistoryScreen } from '../screens/BookingHistoryScreen';
 import { FacilityDetailScreen } from '../screens/FacilityDetailScreen';
+import { ReviewBookingScreen } from '../screens/ReviewBookingScreen';
+import { RescheduleScreen } from '../screens/RescheduleScreen';
+import { ReviewRescheduleScreen } from '../screens/ReviewRescheduleScreen';
 import { CompleteProfileScreen } from '../screens/CompleteProfileScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { getUserProfile } from '../services/userService';
@@ -20,7 +23,7 @@ import { colors } from '../theme/colors';
 const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
-  const { user, setUser, isLoading, setLoading, isProfileComplete, setIsProfileComplete } = useAuthStore();
+  const { user, setUser, isLoading, setLoading, isProfileComplete, setIsProfileComplete, setProfile } = useAuthStore();
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
@@ -35,6 +38,7 @@ export const AppNavigator = () => {
         // Check if profile is complete
         try {
           const profile = await getUserProfile(firebaseUser.uid);
+          setProfile(profile);
           if (profile && profile.fullName && profile.phoneNumber) {
             setIsProfileComplete(true);
           } else {
@@ -46,6 +50,7 @@ export const AppNavigator = () => {
         }
       } else {
         setUser(null);
+        setProfile(null);
         setIsProfileComplete(false);
       }
       
@@ -90,7 +95,10 @@ export const AppNavigator = () => {
             />
             <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen} options={{ title: 'Book Facility' }} />
             <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: 'Facility Details' }} />
+            <Stack.Screen name="ReviewBooking" component={ReviewBookingScreen} options={{ title: 'Review Booking' }} />
             <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} options={{ title: 'My Bookings' }} />
+            <Stack.Screen name="Reschedule" component={RescheduleScreen} options={{ title: 'Reschedule' }} />
+            <Stack.Screen name="ReviewReschedule" component={ReviewRescheduleScreen} options={{ title: 'Review Reschedule' }} />
             <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: 'Wallet' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
           </>
