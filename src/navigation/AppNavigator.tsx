@@ -68,7 +68,6 @@ export const AppNavigator = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          headerTitle: '',
           headerBackTitleVisible: false,
         }}
       >
@@ -87,13 +86,13 @@ export const AppNavigator = () => {
             <Stack.Screen 
               name="Dashboard" 
               component={DashboardScreen} 
-              options={{ headerShown: false }}
+              options={{ title: 'NextDoor Facility', headerShown: false }}
             />
-            <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen} />
-            <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} />
-            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} />
-            <Stack.Screen name="Wallet" component={WalletScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen} options={{ title: 'Book Facility' }} />
+            <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: 'Facility Details' }} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} options={{ title: 'My Bookings' }} />
+            <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: 'Wallet' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
           </>
         )}
       </Stack.Navigator>
