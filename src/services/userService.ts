@@ -32,9 +32,19 @@ export const topUpWallet = async (uid: string, amount: number) => {
   
   return firebaseFirestore.runTransaction(async (transaction) => {
     const doc = await transaction.get(userRef);
-    if (!doc.data()) {
-      throw new Error("User does not exist!");
+
+    if (!doc.exists) {
+      // Create user doc if it doesn't exist (e.g. user created via Firebase console)
+      const newBalance = amount;
+      transaction.set(userRef, {
+        email: null,
+        displayName: 'User',
+        walletBalance: newBalance,
+        createdAt: Date.now(),
+      });
+      return newBalance;
     }
+
     const newBalance = (doc.data()?.walletBalance || 0) + amount;
     transaction.update(userRef, { walletBalance: newBalance });
     return newBalance;
