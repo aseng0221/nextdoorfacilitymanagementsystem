@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { firebaseAuth } from '../services/firebase';
@@ -31,50 +32,57 @@ export const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
-      
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-      </View>
-
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleRegister}
-        disabled={isLoading}
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
       >
-        {isLoading ? (
-          <ActivityIndicator color={colors.white} />
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
-      </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Register</Text>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.linkText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-    </View>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleRegister}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.buttonText}>Register</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.linkText}>Already have an account? Login</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -82,6 +90,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },

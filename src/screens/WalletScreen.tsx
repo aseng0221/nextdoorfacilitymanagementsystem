@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { Plus } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
@@ -29,7 +30,7 @@ export const WalletScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <View style={styles.card}>
         <Text style={styles.balanceLabel}>Total Balance</Text>
         {isLoading ? (
@@ -63,7 +64,7 @@ export const WalletScreen = () => {
           <Text style={styles.transactionAmountPositive}>+$50.00</Text>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
