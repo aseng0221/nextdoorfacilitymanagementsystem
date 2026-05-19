@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, ScrollView } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { colors } from '../theme/colors';
 import { Facility, getFacilities, seedDummyFacilities } from '../services/facilityService';
 import { bookFacility, getFacilityBookingsByDate, Booking } from '../services/bookingService';
@@ -10,8 +11,13 @@ export const FacilitiesListScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Booking state
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [bookedSlots, setBookedSlots] = useState<number[]>([]);
-  const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+  const [selectedStartHour, setSelectedStartHour] = useState<number | null>(null);
+  const [durationHours, setDurationHours] = useState<number>(1);
+
   const { user } = useAuthStore();
 
   useEffect(() => {
@@ -34,10 +40,15 @@ export const FacilitiesListScreen = () => {
     }
   };
 
-  const loadBookingsForFacility = async (facilityId: string) => {
-    const today = new Date();
+  const loadBookingsForFacility = async (facilityId: string, dateString: string) => {
+    const dateParts = dateString.split('-');
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+    const date = new Date(year, month, day);
+
     try {
-      const bookings = await getFacilityBookingsByDate(facilityId, today);
+      const bookings = await getFacilityBookingsByDate(facilityId, date);
       const bookedHours: number[] = [];
       bookings.forEach(booking => {
         if (booking.status !== 'Cancelled') {
@@ -54,58 +65,80 @@ export const FacilitiesListScreen = () => {
     }
   };
 
-  const handleOpenBookingModal = async (facility: Facility) => {
+  const handleOpenBookingModal = (facility: Facility) => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to book a facility.');
       return;
     }
+
+    const today = new Date();
+    // Use local timezone offset to get the correct YYYY-MM-DD
+    const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+    const todayStr = localDate.toISOString().split('T')[0];
+
     setSelectedFacility(facility);
-    setSelectedSlots([]);
+    setSelectedDate(todayStr);
+    setSelectedStartHour(null);
+    setDurationHours(1);
     setBookedSlots([]);
     setIsModalVisible(true);
-    await loadBookingsForFacility(facility.id);
+
+    loadBookingsForFacility(facility.id, todayStr);
   };
 
-  const handleToggleSlot = (hour: number) => {
-    setSelectedSlots(prev => {
-      let newSlots: number[];
-      if (prev.includes(hour)) {
-        newSlots = prev.filter(h => h !== hour).sort((a, b) => a - b);
-      } else {
-        newSlots = [...prev, hour].sort((a, b) => a - b);
-      }
+  const handleDateSelect = (day: any) => {
+    setSelectedDate(day.dateString);
+    setSelectedStartHour(null);
+    setDurationHours(1);
+    if (selectedFacility) {
+      loadBookingsForFacility(selectedFacility.id, day.dateString);
+    }
+  };
 
-      // Ensure slots are contiguous
-      for (let i = 0; i < newSlots.length - 1; i++) {
-        if (newSlots[i + 1] - newSlots[i] !== 1) {
-          Alert.alert('Error', 'Please select contiguous time slots.');
-          return prev; // Revert to previous state if non-contiguous
-        }
+  const handleSelectStartHour = (hour: number) => {
+    setSelectedStartHour(hour);
+    setDurationHours(1); // Reset duration when picking a new start time
+  };
+
+  const handleDurationChange = (delta: number) => {
+    if (selectedStartHour === null) return;
+
+    const newDuration = durationHours + delta;
+    if (newDuration < 1 || newDuration > 4) return; // Max 4 hours limit
+
+    // Check if the new duration overlaps with existing bookings
+    for (let i = 0; i < newDuration; i++) {
+      const hourToCheck = selectedStartHour + i;
+      if (bookedSlots.includes(hourToCheck) || hourToCheck > 21) {
+        return; // Cannot extend into a booked slot or past 10 PM
       }
-      return newSlots;
-    });
+    }
+
+    setDurationHours(newDuration);
   };
 
   const handleConfirmBooking = async () => {
-    if (!user || !selectedFacility || selectedSlots.length === 0) {
-      Alert.alert('Error', 'Please select at least one time slot.');
+    if (!user || !selectedFacility || selectedStartHour === null || !selectedDate) {
+      Alert.alert('Error', 'Please select a date and start time.');
       return;
     }
 
     try {
-      const now = new Date();
-      const firstSlot = selectedSlots[0];
-      const lastSlot = selectedSlots[selectedSlots.length - 1];
+      const dateParts = selectedDate.split('-');
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1; // JS months are 0-indexed
+      const day = parseInt(dateParts[2], 10);
 
-      const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), firstSlot, 0, 0).getTime();
-      const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), lastSlot + 1, 0, 0).getTime();
-      const totalPrice = selectedFacility.pricePerHour * selectedSlots.length;
+      const startTime = new Date(year, month, day, selectedStartHour, 0, 0).getTime();
+      const endTime = new Date(year, month, day, selectedStartHour + durationHours, 0, 0).getTime();
+      const totalPrice = selectedFacility.pricePerHour * durationHours;
 
       await bookFacility(user.uid, selectedFacility.id, selectedFacility.name, totalPrice, startTime, endTime);
       Alert.alert('Success', `Successfully booked ${selectedFacility.name}!`);
       setIsModalVisible(false);
       setSelectedFacility(null);
-      setSelectedSlots([]);
+      setSelectedStartHour(null);
+      setDurationHours(1);
     } catch (error) {
       console.error("Failed to book facility", error);
       Alert.alert('Error', 'Failed to book facility. Please try again.');
@@ -113,12 +146,13 @@ export const FacilitiesListScreen = () => {
   };
 
   const renderTimeSlots = () => {
-    // Generate time slots from 7 AM to 10 PM
+    // Generate time slots from 7 AM to 10 PM (22:00 is the last slot)
     const slots = Array.from({ length: 15 }, (_, i) => i + 7);
 
     return slots.map(hour => {
       const isBooked = bookedSlots.includes(hour);
-      const isSelected = selectedSlots.includes(hour);
+      const isSelected = selectedStartHour !== null && hour >= selectedStartHour && hour < selectedStartHour + durationHours;
+      const isStartSlot = selectedStartHour === hour;
 
       return (
         <TouchableOpacity
@@ -127,14 +161,14 @@ export const FacilitiesListScreen = () => {
             styles.timeSlotButton,
             isBooked ? styles.timeSlotBooked : (isSelected ? styles.timeSlotSelected : null)
           ]}
-          onPress={() => handleToggleSlot(hour)}
+          onPress={() => handleSelectStartHour(hour)}
           disabled={isBooked}
         >
           <Text style={[
             styles.timeSlotText,
             isBooked ? styles.timeSlotTextBooked : (isSelected ? styles.timeSlotTextSelected : null)
           ]}>
-            {hour.toString().padStart(2, '0')}:00 - {(hour + 1).toString().padStart(2, '0')}:00
+            {hour.toString().padStart(2, '0')}:00 {isStartSlot ? '(Start)' : ''}
           </Text>
         </TouchableOpacity>
       );
@@ -181,38 +215,78 @@ export const FacilitiesListScreen = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Time for {selectedFacility?.name}</Text>
-            <Text style={styles.modalSubtitle}>Today</Text>
+            <Text style={styles.modalTitle}>{selectedFacility?.name}</Text>
 
-            <ScrollView contentContainerStyle={styles.timeSlotsContainer}>
-              {renderTimeSlots()}
-            </ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Calendar
+                current={selectedDate}
+                onDayPress={handleDateSelect}
+                markedDates={{
+                  [selectedDate]: { selected: true, selectedColor: colors.primary }
+                }}
+                minDate={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                theme={{
+                  todayTextColor: colors.primary,
+                  selectedDayBackgroundColor: colors.primary,
+                  arrowColor: colors.primary,
+                }}
+                style={styles.calendar}
+              />
 
-            {selectedSlots.length > 0 && (
-              <View style={styles.bookingSummary}>
-                <Text style={styles.summaryText}>
-                  Total Price: ${selectedFacility ? selectedFacility.pricePerHour * selectedSlots.length : 0}
-                </Text>
+              <Text style={styles.sectionHeading}>Select Start Time</Text>
+              <View style={styles.timeSlotsContainer}>
+                {renderTimeSlots()}
               </View>
-            )}
 
-            <TouchableOpacity
-              style={[styles.confirmButton, selectedSlots.length === 0 && styles.confirmButtonDisabled]}
-              onPress={handleConfirmBooking}
-              disabled={selectedSlots.length === 0}
-            >
-              <Text style={styles.confirmButtonText}>Confirm Booking</Text>
-            </TouchableOpacity>
+              {selectedStartHour !== null && (
+                <View style={styles.durationContainer}>
+                  <Text style={styles.sectionHeading}>Duration</Text>
+                  <View style={styles.durationControls}>
+                    <TouchableOpacity
+                      style={styles.durationBtn}
+                      onPress={() => handleDurationChange(-1)}
+                    >
+                      <Text style={styles.durationBtnText}>-</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.durationText}>{durationHours} Hour{durationHours > 1 ? 's' : ''}</Text>
+                    <TouchableOpacity
+                      style={styles.durationBtn}
+                      onPress={() => handleDurationChange(1)}
+                    >
+                      <Text style={styles.durationBtnText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
 
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setIsModalVisible(false);
-                setSelectedSlots([]);
-              }}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+                  <View style={styles.bookingSummary}>
+                    <Text style={styles.summaryText}>
+                      Total Price: ${selectedFacility ? selectedFacility.pricePerHour * durationHours : 0}
+                    </Text>
+                    <Text style={styles.summaryTime}>
+                      {selectedStartHour}:00 - {selectedStartHour + durationHours}:00
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={[styles.confirmButton, selectedStartHour === null && styles.confirmButtonDisabled]}
+                onPress={handleConfirmBooking}
+                disabled={selectedStartHour === null}
+              >
+                <Text style={styles.confirmButtonText}>Confirm Booking</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setIsModalVisible(false);
+                  setSelectedStartHour(null);
+                  setDurationHours(1);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -343,14 +417,67 @@ const styles = StyleSheet.create({
     color: '#9e9e9e',
     textDecorationLine: 'line-through',
   },
-  bookingSummary: {
+  calendar: {
     marginBottom: 16,
-    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  summaryText: {
+  sectionHeading: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  durationContainer: {
+    backgroundColor: colors.surface,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+  },
+  durationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  durationBtn: {
+    width: 40,
+    height: 40,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  durationBtnText: {
+    fontSize: 24,
+    color: colors.primaryDark,
+    fontWeight: 'bold',
+  },
+  durationText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginHorizontal: 24,
+    color: colors.text,
+  },
+  bookingSummary: {
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 16,
+  },
+  summaryText: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: colors.primary,
+    marginBottom: 4,
+  },
+  summaryTime: {
+    fontSize: 14,
+    color: colors.textLight,
   },
   confirmButton: {
     backgroundColor: colors.primary,
