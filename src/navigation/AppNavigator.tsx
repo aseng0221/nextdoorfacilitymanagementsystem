@@ -11,6 +11,7 @@ import { DashboardScreen } from '../screens/DashboardScreen';
 import { WalletScreen } from '../screens/WalletScreen';
 import { FacilitiesListScreen } from '../screens/FacilitiesListScreen';
 import { BookingHistoryScreen } from '../screens/BookingHistoryScreen';
+import { FacilityDetailScreen } from '../screens/FacilityDetailScreen';
 import { colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
@@ -61,6 +62,7 @@ export const AppNavigator = () => {
               options={{ title: 'NextDoor Facility', headerShown: false }}
             />
             <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen} options={{ title: 'Book Facility' }} />
+            <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: 'Facility Details' }} />
             <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} options={{ title: 'My Bookings' }} />
             <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: 'Wallet' }} />
           </>
