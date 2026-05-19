@@ -82,7 +82,7 @@ export const AppNavigator = () => {
             fontWeight: 'bold',
           },
           headerTitle: '',
-          headerBackTitleVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
         }}
       >
         {!user ? (
