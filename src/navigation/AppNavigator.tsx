@@ -12,9 +12,20 @@ import { WalletScreen } from '../screens/WalletScreen';
 import { FacilitiesListScreen } from '../screens/FacilitiesListScreen';
 import { BookingHistoryScreen } from '../screens/BookingHistoryScreen';
 import { FacilityDetailScreen } from '../screens/FacilityDetailScreen';
+import { Facility } from '../services/facilityService';
 import { colors } from '../theme/colors';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  Dashboard: undefined;
+  FacilitiesList: undefined;
+  FacilityDetail: { facility: Facility };
+  BookingHistory: undefined;
+  Wallet: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
   const { user, setUser, isLoading, setLoading } = useAuthStore();
