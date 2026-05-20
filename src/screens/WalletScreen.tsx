@@ -1,32 +1,109 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { Plus } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
-import { getUserProfile, UserProfile } from '../services/userService';
+import { getUserProfile, UserProfile, topUpWallet } from '../services/userService';
+import { getWalletTransactions, WalletTransaction } from '../services/walletService';
 
 export const WalletScreen = () => {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isTopUpLoading, setIsTopUpLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const loadProfile = async () => {
+  const loadData = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      const data = await getUserProfile(user!.uid);
+      const data = await getUserProfile(user.uid);
       setProfile(data);
+
+      const { transactions: newTx, lastVisible: newLast } = await getWalletTransactions(user.uid, 20);
+      setTransactions(newTx);
+      setLastVisible(newLast);
+      setHasMore(newTx.length === 20);
     } catch (error) {
-      console.error("Failed to load profile", error);
+      console.error("Failed to load profile or transactions", error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [user])
+  );
+
+  const loadMoreTransactions = async () => {
+    if (!hasMore || isLoadingMore || !user || !lastVisible) return;
+
+    setIsLoadingMore(true);
+    try {
+      const { transactions: moreTx, lastVisible: newLast } = await getWalletTransactions(user.uid, 20, lastVisible);
+      setTransactions([...transactions, ...moreTx]);
+      setLastVisible(newLast);
+      setHasMore(moreTx.length === 20);
+    } catch (error) {
+      console.error("Failed to load more transactions", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  const handleTopUp = async () => {
+    if (!user) return;
+
+    Alert.alert(
+      "Demo Top Up",
+      "Add $50 to your wallet?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            setIsTopUpLoading(true);
+            try {
+              await topUpWallet(user.uid, 50, 'top_up', 'Wallet Top Up');
+              await loadData();
+            } catch (error) {
+              console.error("Top up failed", error);
+              Alert.alert("Error", "Failed to top up wallet.");
+            } finally {
+              setIsTopUpLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderItem = ({ item }: { item: WalletTransaction }) => {
+    const isPositive = item.amount > 0;
+    const amountStr = `${isPositive ? '+' : ''}$${Math.abs(item.amount).toFixed(2)}`;
+
+    return (
+      <View style={styles.transactionItem}>
+        <View style={styles.transactionLeft}>
+          <Text style={styles.transactionTitle}>{item.description}</Text>
+          <Text style={styles.transactionDate}>
+            {new Date(item.createdAt).toLocaleString(undefined, {
+              day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })}
+          </Text>
+        </View>
+        <Text style={isPositive ? styles.transactionAmountPositive : styles.transactionAmountNegative}>
+          {amountStr}
+        </Text>
+      </View>
+    );
   };
 
   return (
@@ -39,30 +116,36 @@ export const WalletScreen = () => {
           <Text style={styles.balanceAmount}>${profile?.walletBalance?.toFixed(2) || '0.00'}</Text>
         )}
         
-        <TouchableOpacity style={styles.topUpButton}>
-          <Plus color={colors.primary} size={20} />
-          <Text style={styles.topUpText}>Top Up</Text>
+        <TouchableOpacity style={styles.topUpButton} onPress={handleTopUp} disabled={isTopUpLoading}>
+          {isTopUpLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <>
+              <Plus color={colors.primary} size={20} />
+              <Text style={styles.topUpText}>Top Up</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>Recent Transactions</Text>
       
       <View style={styles.transactionList}>
-        <View style={styles.transactionItem}>
-          <View>
-            <Text style={styles.transactionTitle}>Basketball Court Booking</Text>
-            <Text style={styles.transactionDate}>16 May 2026, 14:00</Text>
-          </View>
-          <Text style={styles.transactionAmountNegative}>-$20.00</Text>
-        </View>
-        
-        <View style={styles.transactionItem}>
-          <View>
-            <Text style={styles.transactionTitle}>Top Up</Text>
-            <Text style={styles.transactionDate}>15 May 2026, 10:00</Text>
-          </View>
-          <Text style={styles.transactionAmountPositive}>+$50.00</Text>
-        </View>
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ padding: 20 }} />
+        ) : (
+          <FlatList
+            data={transactions}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            onEndReached={loadMoreTransactions}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={isLoadingMore ? <ActivityIndicator color={colors.primary} style={{ padding: 10 }} /> : null}
+            ListEmptyComponent={<Text style={styles.emptyText}>No recent transactions.</Text>}
+            contentContainerStyle={styles.flatListContent}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -125,6 +208,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  transactionLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
   transactionTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -144,5 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: colors.success,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: colors.textLight,
+    padding: 20,
+  },
+  flatListContent: {
+    paddingBottom: 24,
   },
 });

@@ -48,8 +48,13 @@ import firestore from '@react-native-firebase/firestore';
 
 export const rescheduleBooking = async (bookingId: string, userId: string, newStartTime: number, newEndTime: number, priceDifference: number) => {
   // If the new duration is longer, they pay more. If shorter, they get a refund.
-  if (priceDifference !== 0) {
-    await topUpWallet(userId, -priceDifference);
+  if (priceDifference > 0) {
+    // They owe us money (shorter -> longer)
+    await topUpWallet(userId, -priceDifference, 'booking', `Reschedule Charge`);
+  } else if (priceDifference < 0) {
+    // We owe them money (longer -> shorter)
+    // Note: since priceDifference is negative, -priceDifference makes it positive
+    await topUpWallet(userId, -priceDifference, 'refund', `Reschedule Refund`);
   }
 
   const bookingRef = firebaseFirestore.collection('bookings').doc(bookingId);
@@ -73,7 +78,7 @@ export const bookFacility = async (
   // Simple booking logic (deduct from wallet, create booking)
   // In a real app this would be a secure batch/transaction.
   if (paymentMethod === 'Wallet') {
-    await topUpWallet(userId, -price);
+    await topUpWallet(userId, -price, 'booking', `Booking: ${facilityName}`);
   }
   
   const status = paymentMethod === 'Wallet' ? 'Payment Made' : 'Pending Payment';

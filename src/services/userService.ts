@@ -36,15 +36,22 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
   return null;
 };
 
-export const topUpWallet = async (uid: string, amount: number) => {
+export const topUpWallet = async (
+  uid: string,
+  amount: number,
+  type: 'top_up' | 'booking' | 'refund' = 'top_up',
+  description: string = 'Wallet Top Up'
+) => {
   const userRef = firebaseFirestore.collection('users').doc(uid);
+  const transactionRef = firebaseFirestore.collection('walletTransactions').doc();
   
   return firebaseFirestore.runTransaction(async (transaction) => {
     const doc = await transaction.get(userRef);
 
+    let newBalance = amount;
+
     if (!doc.exists) {
       // Create user doc if it doesn't exist (e.g. user created via Firebase console)
-      const newBalance = amount;
       transaction.set(userRef, {
         email: null,
         displayName: 'User',
@@ -52,11 +59,20 @@ export const topUpWallet = async (uid: string, amount: number) => {
         emailVerified: false,
         createdAt: Date.now(),
       });
-      return newBalance;
+    } else {
+      newBalance = (doc.data()?.walletBalance || 0) + amount;
+      transaction.update(userRef, { walletBalance: newBalance });
     }
 
-    const newBalance = (doc.data()?.walletBalance || 0) + amount;
-    transaction.update(userRef, { walletBalance: newBalance });
+    // Also record the transaction
+    transaction.set(transactionRef, {
+      userId: uid,
+      amount,
+      type,
+      description,
+      createdAt: Date.now(),
+    });
+
     return newBalance;
   });
 };
