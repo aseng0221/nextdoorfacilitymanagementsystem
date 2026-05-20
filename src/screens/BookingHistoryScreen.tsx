@@ -36,31 +36,39 @@ export const BookingHistoryScreen = ({ navigation }: Props) => {
     }
   };
 
-  const renderItem = ({ item }: { item: Booking }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.facilityName}>{item.facilityName}</Text>
-        <View style={[styles.statusBadge, item.status === 'Upcoming' ? styles.statusUpcoming : styles.statusCompleted]}>
-          <Text style={[styles.statusText, item.status === 'Upcoming' ? styles.statusTextUpcoming : styles.statusTextCompleted]}>
-            {item.status}
-          </Text>
+  const renderItem = ({ item }: { item: Booking }) => {
+    const isWithin24Hours = (item.startTime - Date.now()) < 24 * 60 * 60 * 1000;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.facilityName}>{item.facilityName}</Text>
+          <View style={[styles.statusBadge, item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment' ? styles.statusUpcoming : styles.statusCompleted]}>
+            <Text style={[styles.statusText, item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment' ? styles.statusTextUpcoming : styles.statusTextCompleted]}>
+              {item.status}
+            </Text>
+          </View>
         </View>
+        <View style={styles.detailsContainer}>
+          <Text style={styles.detailsText}>Date: {new Date(item.startTime).toLocaleDateString()}</Text>
+          <Text style={styles.detailsText}>Time: {new Date(item.startTime).toLocaleTimeString()} - {new Date(item.endTime).toLocaleTimeString()}</Text>
+          <Text style={styles.detailsText}>Total: ${item.totalPrice}</Text>
+        </View>
+        {(item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment') && (
+          isWithin24Hours ? (
+            <Text style={styles.noRescheduleText}>Cannot reschedule within 24 hours of start time.</Text>
+          ) : (
+            <TouchableOpacity
+              style={styles.rescheduleButton}
+              onPress={() => navigation.navigate('Reschedule', { booking: item })}
+            >
+              <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
-      <View style={styles.detailsContainer}>
-        <Text style={styles.detailsText}>Date: {new Date(item.startTime).toLocaleDateString()}</Text>
-        <Text style={styles.detailsText}>Time: {new Date(item.startTime).toLocaleTimeString()} - {new Date(item.endTime).toLocaleTimeString()}</Text>
-        <Text style={styles.detailsText}>Total: ${item.totalPrice}</Text>
-      </View>
-      {item.status === 'Upcoming' && (
-        <TouchableOpacity
-          style={styles.rescheduleButton}
-          onPress={() => navigation.navigate('Reschedule', { booking: item })}
-        >
-          <Text style={styles.rescheduleButtonText}>Reschedule</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
@@ -156,5 +164,12 @@ const styles = StyleSheet.create({
   rescheduleButtonText: {
     color: colors.white,
     fontWeight: 'bold',
+  },
+  noRescheduleText: {
+    marginTop: 12,
+    fontSize: 12,
+    color: colors.textLight,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });

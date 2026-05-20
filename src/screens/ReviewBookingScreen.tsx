@@ -7,7 +7,16 @@ import { Facility } from '../services/facilityService';
 import { bookFacility } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+// Temporary definition for route params, this will be centralized
+type RootStackParamList = {
+  ReviewBooking: {
+    facility: Facility;
+    startTime: number;
+    endTime: number;
+    durationHours: number;
+    totalPrice: number;
+  };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewBooking'>;
 
@@ -15,6 +24,7 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
   const { facility, startTime, endTime, durationHours, totalPrice } = route.params;
   const { user } = useAuthStore();
   const [isBooking, setIsBooking] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'Wallet' | 'Cash'>('Wallet');
 
   const handleConfirmBooking = async () => {
     if (!user) {
@@ -24,9 +34,9 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
 
     setIsBooking(true);
     try {
-      await bookFacility(user.uid, facility.id, facility.name, totalPrice, startTime, endTime);
+      await bookFacility(user.uid, facility.id, facility.name, totalPrice, startTime, endTime, paymentMethod);
       Alert.alert('Success', `Successfully booked ${facility.name}!`, [
-        { text: 'OK', onPress: () => navigation.popTo('Dashboard', undefined) }
+        { text: 'OK', onPress: () => (navigation as any).popTo('Dashboard') }
       ]);
     } catch (error) {
       console.error("Failed to book facility", error);
@@ -77,6 +87,22 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
             <Text style={styles.totalLabel}>Total Price</Text>
             <Text style={styles.totalValue}>${totalPrice}</Text>
           </View>
+        </View>
+
+        <Text style={styles.paymentTitle}>Select Payment Method</Text>
+        <View style={styles.paymentMethods}>
+          <TouchableOpacity
+            style={[styles.paymentMethodButton, paymentMethod === 'Wallet' && styles.paymentMethodActive]}
+            onPress={() => setPaymentMethod('Wallet')}
+          >
+            <Text style={[styles.paymentMethodText, paymentMethod === 'Wallet' && styles.paymentMethodTextActive]}>Wallet</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.paymentMethodButton, paymentMethod === 'Cash' && styles.paymentMethodActive]}
+            onPress={() => setPaymentMethod('Cash')}
+          >
+            <Text style={[styles.paymentMethodText, paymentMethod === 'Cash' && styles.paymentMethodTextActive]}>Cash/Online Transfer</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -157,6 +183,39 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.primary,
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  paymentMethods: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  paymentMethodButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  paymentMethodActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  paymentMethodText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textLight,
+  },
+  paymentMethodTextActive: {
+    color: colors.primaryDark,
   },
   footer: {
     padding: 24,

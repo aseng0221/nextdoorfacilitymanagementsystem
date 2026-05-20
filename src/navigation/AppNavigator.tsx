@@ -19,40 +19,9 @@ import { CompleteProfileScreen } from '../screens/CompleteProfileScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { getUserProfile } from '../services/userService';
-import { Facility } from '../services/facilityService';
-import { Booking } from '../services/bookingService';
 import { colors } from '../theme/colors';
 
-export type RootStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  VerifyEmail: undefined;
-  CompleteProfile: undefined;
-  Dashboard: undefined;
-  FacilitiesList: undefined;
-  FacilityDetail: { facility: Facility };
-  ReviewBooking: {
-    facility: Facility;
-    startTime: number;
-    endTime: number;
-    durationHours: number;
-    totalPrice: number;
-  };
-  BookingHistory: undefined;
-  Reschedule: { booking: Booking };
-  ReviewReschedule: {
-    booking: Booking;
-    facility: Facility;
-    newStartTime: number;
-    newEndTime: number;
-    newDurationHours: number;
-    priceDifference: number;
-  };
-  Wallet: undefined;
-  Profile: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator();
 
 export const AppNavigator = () => {
   const {
@@ -118,8 +87,8 @@ export const AppNavigator = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          headerBackButtonDisplayMode: 'minimal',
-        }}
+          headerBackTitleVisible: false,
+        } as any}
       >
         {!user ? (
           // Auth Flow
@@ -141,13 +110,13 @@ export const AppNavigator = () => {
               component={DashboardScreen} 
               options={{ title: 'NextDoor Facility', headerShown: false }}
             />
-            <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen} options={{ title: 'Book Facility' }} />
-            <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen} options={{ title: 'Facility Details' }} />
-            <Stack.Screen name="ReviewBooking" component={ReviewBookingScreen} options={{ title: 'Review Booking' }} />
-            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen} options={{ title: 'My Bookings' }} />
-            <Stack.Screen name="Reschedule" component={RescheduleScreen} options={{ title: 'Reschedule' }} />
-            <Stack.Screen name="ReviewReschedule" component={ReviewRescheduleScreen} options={{ title: 'Review Reschedule' }} />
-            <Stack.Screen name="Wallet" component={WalletScreen} options={{ title: 'Wallet' }} />
+            <Stack.Screen name="FacilitiesList" component={FacilitiesListScreen as any} options={{ title: 'Book Facility' }} />
+            <Stack.Screen name="FacilityDetail" component={FacilityDetailScreen as any} options={{ title: 'Facility Details' }} />
+            <Stack.Screen name="ReviewBooking" component={ReviewBookingScreen as any} options={{ title: 'Review Booking' }} />
+            <Stack.Screen name="BookingHistory" component={BookingHistoryScreen as any} options={{ title: 'My Bookings' }} />
+            <Stack.Screen name="Reschedule" component={RescheduleScreen as any} options={{ title: 'Reschedule' }} />
+            <Stack.Screen name="ReviewReschedule" component={ReviewRescheduleScreen as any} options={{ title: 'Review Reschedule' }} />
+            <Stack.Screen name="Wallet" component={WalletScreen as any} options={{ title: 'Wallet' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
           </>
         )}

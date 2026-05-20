@@ -1,4 +1,4 @@
-import { firebaseFirestore, firestore } from './firebase';
+import { firebaseFirestore } from './firebase';
 import { topUpWallet } from './userService';
 
 export interface Booking {
@@ -9,7 +9,8 @@ export interface Booking {
   startTime: number;
   endTime: number;
   totalPrice: number;
-  status: 'Upcoming' | 'Completed' | 'Cancelled';
+  status: 'Upcoming' | 'Payment Made' | 'Pending Payment' | 'Completed' | 'Cancelled';
+  paymentMethod?: 'Wallet' | 'Cash';
   createdAt: number;
 }
 
@@ -43,6 +44,8 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
   })) as Booking[];
 };
 
+import firestore from '@react-native-firebase/firestore';
+
 export const rescheduleBooking = async (bookingId: string, userId: string, newStartTime: number, newEndTime: number, priceDifference: number) => {
   // If the new duration is longer, they pay more. If shorter, they get a refund.
   if (priceDifference !== 0) {
@@ -58,11 +61,23 @@ export const rescheduleBooking = async (bookingId: string, userId: string, newSt
   });
 };
 
-export const bookFacility = async (userId: string, facilityId: string, facilityName: string, price: number, startTime: number, endTime: number) => {
+export const bookFacility = async (
+  userId: string,
+  facilityId: string,
+  facilityName: string,
+  price: number,
+  startTime: number,
+  endTime: number,
+  paymentMethod: 'Wallet' | 'Cash' = 'Wallet'
+) => {
   // Simple booking logic (deduct from wallet, create booking)
   // In a real app this would be a secure batch/transaction.
-  await topUpWallet(userId, -price);
+  if (paymentMethod === 'Wallet') {
+    await topUpWallet(userId, -price);
+  }
   
+  const status = paymentMethod === 'Wallet' ? 'Payment Made' : 'Pending Payment';
+
   const bookingRef = firebaseFirestore.collection('bookings').doc();
   const booking: Omit<Booking, 'id'> = {
     userId,
@@ -71,7 +86,8 @@ export const bookFacility = async (userId: string, facilityId: string, facilityN
     startTime,
     endTime,
     totalPrice: price,
-    status: 'Upcoming',
+    status,
+    paymentMethod,
     createdAt: Date.now(),
   };
   
