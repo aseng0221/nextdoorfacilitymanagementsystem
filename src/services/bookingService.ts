@@ -1,4 +1,4 @@
-import { firebaseFirestore } from './firebase';
+import { firebaseFirestore, firestore } from './firebase';
 import { topUpWallet } from './userService';
 
 export interface Booking {
@@ -54,7 +54,7 @@ export const rescheduleBooking = async (bookingId: string, userId: string, newSt
   await bookingRef.update({
     startTime: newStartTime,
     endTime: newEndTime,
-    totalPrice: firebaseFirestore.FieldValue.increment(priceDifference)
+    totalPrice: firestore.FieldValue.increment(priceDifference)
   });
 };
 

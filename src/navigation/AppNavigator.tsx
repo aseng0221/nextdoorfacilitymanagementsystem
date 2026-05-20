@@ -19,9 +19,40 @@ import { CompleteProfileScreen } from '../screens/CompleteProfileScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { VerifyEmailScreen } from '../screens/VerifyEmailScreen';
 import { getUserProfile } from '../services/userService';
+import { Facility } from '../services/facilityService';
+import { Booking } from '../services/bookingService';
 import { colors } from '../theme/colors';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  VerifyEmail: undefined;
+  CompleteProfile: undefined;
+  Dashboard: undefined;
+  FacilitiesList: undefined;
+  FacilityDetail: { facility: Facility };
+  ReviewBooking: {
+    facility: Facility;
+    startTime: number;
+    endTime: number;
+    durationHours: number;
+    totalPrice: number;
+  };
+  BookingHistory: undefined;
+  Reschedule: { booking: Booking };
+  ReviewReschedule: {
+    booking: Booking;
+    facility: Facility;
+    newStartTime: number;
+    newEndTime: number;
+    newDurationHours: number;
+    priceDifference: number;
+  };
+  Wallet: undefined;
+  Profile: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator = () => {
   const {
@@ -87,7 +118,7 @@ export const AppNavigator = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-          headerBackTitleVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
         }}
       >
         {!user ? (
