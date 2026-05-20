@@ -37,36 +37,27 @@ export const BookingHistoryScreen = ({ navigation }: Props) => {
   };
 
   const renderItem = ({ item }: { item: Booking }) => {
-    const isWithin24Hours = (item.startTime - Date.now()) < 24 * 60 * 60 * 1000;
+    const isActive = item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment' || item.status === 'Pending Verification';
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navigation.navigate('BookingDetail', { booking: item })}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.facilityName}>{item.facilityName}</Text>
-          <View style={[styles.statusBadge, item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment' ? styles.statusUpcoming : styles.statusCompleted]}>
-            <Text style={[styles.statusText, item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment' ? styles.statusTextUpcoming : styles.statusTextCompleted]}>
-              {item.status}
-            </Text>
-          </View>
+        </View>
+        <View style={[styles.statusBadge, isActive ? styles.statusUpcoming : styles.statusCompleted]}>
+          <Text style={[styles.statusText, isActive ? styles.statusTextUpcoming : styles.statusTextCompleted]}>
+            {item.status}
+          </Text>
         </View>
         <View style={styles.detailsContainer}>
           <Text style={styles.detailsText}>Date: {new Date(item.startTime).toLocaleDateString()}</Text>
-          <Text style={styles.detailsText}>Time: {new Date(item.startTime).toLocaleTimeString()} - {new Date(item.endTime).toLocaleTimeString()}</Text>
+          <Text style={styles.detailsText}>Time: {new Date(item.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(item.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
           <Text style={styles.detailsText}>Total: ${item.totalPrice}</Text>
         </View>
-        {(item.status === 'Upcoming' || item.status === 'Payment Made' || item.status === 'Pending Payment') && (
-          isWithin24Hours ? (
-            <Text style={styles.noRescheduleText}>Cannot reschedule within 24 hours of start time.</Text>
-          ) : (
-            <TouchableOpacity
-              style={styles.rescheduleButton}
-              onPress={() => navigation.navigate('Reschedule', { booking: item })}
-            >
-              <Text style={styles.rescheduleButtonText}>Reschedule</Text>
-            </TouchableOpacity>
-          )
-        )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -118,17 +109,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   facilityName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.text,
   },
   statusBadge: {
+    alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    marginBottom: 12,
   },
   statusUpcoming: {
     backgroundColor: colors.primaryLight,
@@ -147,29 +140,11 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
   detailsContainer: {
-    marginTop: 8,
+    marginTop: 4,
   },
   detailsText: {
     fontSize: 14,
     color: colors.textLight,
     marginBottom: 4,
-  },
-  rescheduleButton: {
-    marginTop: 12,
-    backgroundColor: colors.primary,
-    padding: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  rescheduleButtonText: {
-    color: colors.white,
-    fontWeight: 'bold',
-  },
-  noRescheduleText: {
-    marginTop: 12,
-    fontSize: 12,
-    color: colors.textLight,
-    fontStyle: 'italic',
-    textAlign: 'center',
   },
 });

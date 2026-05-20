@@ -1,4 +1,4 @@
-import { firebaseFirestore, firestore } from './firebase';
+import { firebaseFirestore } from './firebase';
 import { topUpWallet } from './userService';
 
 export interface Booking {
@@ -9,8 +9,9 @@ export interface Booking {
   startTime: number;
   endTime: number;
   totalPrice: number;
-  status: 'Upcoming' | 'Payment Made' | 'Pending Payment' | 'Completed' | 'Cancelled';
+  status: 'Upcoming' | 'Payment Made' | 'Pending Payment' | 'Pending Verification' | 'Completed' | 'Cancelled';
   paymentMethod?: 'Wallet' | 'Cash';
+  receiptUrl?: string;
   createdAt: number;
 }
 
@@ -42,6 +43,16 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     id: doc.id,
     ...doc.data()
   })) as Booking[];
+};
+
+import firestore from '@react-native-firebase/firestore';
+
+export const uploadPaymentReceipt = async (bookingId: string, receiptUrl: string) => {
+  const bookingRef = firebaseFirestore.collection('bookings').doc(bookingId);
+  await bookingRef.update({
+    receiptUrl,
+    status: 'Pending Verification',
+  });
 };
 
 export const rescheduleBooking = async (bookingId: string, userId: string, newStartTime: number, newEndTime: number, priceDifference: number) => {

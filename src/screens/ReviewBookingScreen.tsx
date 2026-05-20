@@ -7,7 +7,16 @@ import { Facility } from '../services/facilityService';
 import { bookFacility } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+// Temporary definition for route params, this will be centralized
+type RootStackParamList = {
+  ReviewBooking: {
+    facility: Facility;
+    startTime: number;
+    endTime: number;
+    durationHours: number;
+    totalPrice: number;
+  };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewBooking'>;
 
@@ -27,7 +36,7 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
     try {
       await bookFacility(user.uid, facility.id, facility.name, totalPrice, startTime, endTime, paymentMethod);
       Alert.alert('Success', `Successfully booked ${facility.name}!`, [
-        { text: 'OK', onPress: () => navigation.popTo('Dashboard', undefined) }
+        { text: 'OK', onPress: () => (navigation as any).popTo('Dashboard') }
       ]);
     } catch (error) {
       console.error("Failed to book facility", error);

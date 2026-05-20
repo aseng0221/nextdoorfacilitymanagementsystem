@@ -8,7 +8,10 @@ import { Facility } from '../services/facilityService';
 import { getFacilityBookingsByDate } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+// Temporary definition for route params
+type RootStackParamList = {
+  FacilityDetail: { facility: Facility };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FacilityDetail'>;
 
@@ -107,7 +110,7 @@ export const FacilityDetailScreen = ({ route, navigation }: Props) => {
     const totalPrice = facility.pricePerHour * durationHours;
 
     // Navigate to Review screen
-    navigation.navigate('ReviewBooking', {
+    (navigation as any).navigate('ReviewBooking', {
       facility,
       startTime,
       endTime,
