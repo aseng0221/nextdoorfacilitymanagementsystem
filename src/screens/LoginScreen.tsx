@@ -20,7 +20,26 @@ export const LoginScreen = ({ navigation }: Props) => {
       await firebaseAuth.signInWithEmailAndPassword(email, password);
       // AppNavigator will handle the state change via onAuthStateChanged
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+
+      // Map Firebase auth errors to user-friendly messages
+      if (
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/user-not-found'
+      ) {
+        errorMessage = 'Incorrect email or password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed login attempts. Please try again later.';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'This account has been disabled. Please contact support.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+
+      Alert.alert('Login Failed', errorMessage);
       setIsLoading(false);
     }
   };
