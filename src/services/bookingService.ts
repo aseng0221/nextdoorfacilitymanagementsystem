@@ -1,4 +1,4 @@
-import { firebaseFirestore } from './firebase';
+import { firebaseFirestore, firestore } from './firebase';
 import { topUpWallet } from './userService';
 
 export interface Booking {
@@ -43,8 +43,6 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     ...doc.data()
   })) as Booking[];
 };
-
-import firestore from '@react-native-firebase/firestore';
 
 export const rescheduleBooking = async (bookingId: string, userId: string, newStartTime: number, newEndTime: number, priceDifference: number) => {
   // If the new duration is longer, they pay more. If shorter, they get a refund.
