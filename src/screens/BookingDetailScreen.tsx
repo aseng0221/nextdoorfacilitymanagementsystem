@@ -5,10 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { Booking, uploadPaymentReceipt } from '../services/bookingService';
 
-type RootStackParamList = {
-  BookingDetail: { booking: Booking };
-  Reschedule: { booking: Booking };
-};
+import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingDetail'>;
 
@@ -115,7 +112,7 @@ export const BookingDetailScreen = ({ route, navigation }: Props) => {
             ) : (
               <TouchableOpacity
                 style={styles.button}
-                onPress={() => navigation.navigate('Reschedule' as any, { booking })}
+                onPress={() => navigation.navigate('Reschedule', { booking })}
               >
                 <Text style={styles.buttonText}>Reschedule Booking</Text>
               </TouchableOpacity>
