@@ -7,13 +7,22 @@ import { Facility } from '../services/facilityService';
 import { bookFacility } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+// Temporary definition for route params, this will be centralized
+type RootStackParamList = {
+  ReviewBooking: {
+    facility: Facility;
+    startTime: number;
+    endTime: number;
+    durationHours: number;
+    totalPrice: number;
+  };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewBooking'>;
 
 export const ReviewBookingScreen = ({ route, navigation }: Props) => {
   const { facility, startTime, endTime, durationHours, totalPrice } = route.params;
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [isBooking, setIsBooking] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'Wallet' | 'Cash'>('Wallet');
 
@@ -23,15 +32,21 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
       return;
     }
 
+    if (paymentMethod === 'Wallet' && profile && profile.walletBalance < totalPrice) {
+      Alert.alert('Insufficient Balance', 'Your wallet balance is not enough to cover this booking.');
+      return;
+    }
+
     setIsBooking(true);
     try {
       await bookFacility(user.uid, facility.id, facility.name, totalPrice, startTime, endTime, paymentMethod);
       Alert.alert('Success', `Successfully booked ${facility.name}!`, [
-        { text: 'OK', onPress: () => navigation.popTo('Dashboard', undefined) }
+        { text: 'OK', onPress: () => (navigation as any).popTo('Dashboard') }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to book facility", error);
-      Alert.alert('Error', 'Failed to book facility. Please try again.');
+      const msg = error.message === 'Insufficient wallet balance' ? error.message : 'Failed to book facility. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setIsBooking(false);
     }

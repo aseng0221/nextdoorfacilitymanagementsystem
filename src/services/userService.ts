@@ -52,6 +52,9 @@ export const topUpWallet = async (
 
     if (!doc.exists) {
       // Create user doc if it doesn't exist (e.g. user created via Firebase console)
+      if (newBalance < 0) {
+        throw new Error('Insufficient wallet balance');
+      }
       transaction.set(userRef, {
         email: null,
         displayName: 'User',
@@ -61,6 +64,9 @@ export const topUpWallet = async (
       });
     } else {
       newBalance = (doc.data()?.walletBalance || 0) + amount;
+      if (newBalance < 0) {
+        throw new Error('Insufficient wallet balance');
+      }
       transaction.update(userRef, { walletBalance: newBalance });
     }
 

@@ -7,13 +7,22 @@ import { Facility } from '../services/facilityService';
 import { Booking, rescheduleBooking } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+type RootStackParamList = {
+  ReviewReschedule: {
+    booking: Booking;
+    facility: Facility;
+    newStartTime: number;
+    newEndTime: number;
+    newDurationHours: number;
+    priceDifference: number;
+  };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewReschedule'>;
 
 export const ReviewRescheduleScreen = ({ route, navigation }: Props) => {
   const { booking, facility, newStartTime, newEndTime, newDurationHours, priceDifference } = route.params;
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const [isRescheduling, setIsRescheduling] = useState(false);
 
   const handleConfirmReschedule = async () => {
@@ -22,15 +31,21 @@ export const ReviewRescheduleScreen = ({ route, navigation }: Props) => {
       return;
     }
 
+    if (priceDifference > 0 && profile && profile.walletBalance < priceDifference) {
+      Alert.alert('Insufficient Balance', 'Your wallet balance is not enough to cover the price difference.');
+      return;
+    }
+
     setIsRescheduling(true);
     try {
       await rescheduleBooking(booking.id, user.uid, newStartTime, newEndTime, priceDifference);
       Alert.alert('Success', 'Successfully rescheduled booking!', [
-        { text: 'OK', onPress: () => navigation.popTo('BookingHistory', undefined) }
+        { text: 'OK', onPress: () => (navigation as any).popTo('BookingHistory') }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to reschedule", error);
-      Alert.alert('Error', 'Failed to reschedule. Please try again.');
+      const msg = error.message === 'Insufficient wallet balance' ? error.message : 'Failed to reschedule. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setIsRescheduling(false);
     }
