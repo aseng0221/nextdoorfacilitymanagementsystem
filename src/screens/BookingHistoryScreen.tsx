@@ -5,10 +5,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { Booking, getUserBookings } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'BookingHistory'>;
+type Props = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
 
 export const BookingHistoryScreen = ({ navigation }: Props) => {
   const { user } = useAuthStore();

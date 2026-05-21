@@ -7,7 +7,16 @@ import { Facility } from '../services/facilityService';
 import { bookFacility } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+// Temporary definition for route params, this will be centralized
+type RootStackParamList = {
+  ReviewBooking: {
+    facility: Facility;
+    startTime: number;
+    endTime: number;
+    durationHours: number;
+    totalPrice: number;
+  };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewBooking'>;
 
@@ -24,7 +33,14 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
     }
 
     if (paymentMethod === 'Wallet' && profile && profile.walletBalance < totalPrice) {
-      Alert.alert('Insufficient Balance', 'Your wallet balance is not enough to cover this booking.');
+      Alert.alert(
+        'Insufficient Balance',
+        'Your wallet balance is not enough to cover this booking. Would you like to top up now?',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Top Up Now', onPress: () => (navigation as any).navigate('Wallet') }
+        ]
+      );
       return;
     }
 
@@ -32,7 +48,7 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
     try {
       await bookFacility(user.uid, facility.id, facility.name, totalPrice, startTime, endTime, paymentMethod);
       Alert.alert('Success', `Successfully booked ${facility.name}!`, [
-        { text: 'OK', onPress: () => navigation.popTo('Dashboard', undefined) }
+        { text: 'OK', onPress: () => (navigation as any).popTo('Dashboard') }
       ]);
     } catch (error: any) {
       console.error("Failed to book facility", error);
@@ -92,7 +108,9 @@ export const ReviewBookingScreen = ({ route, navigation }: Props) => {
             style={[styles.paymentMethodButton, paymentMethod === 'Wallet' && styles.paymentMethodActive]}
             onPress={() => setPaymentMethod('Wallet')}
           >
-            <Text style={[styles.paymentMethodText, paymentMethod === 'Wallet' && styles.paymentMethodTextActive]}>Wallet</Text>
+            <Text style={[styles.paymentMethodText, paymentMethod === 'Wallet' && styles.paymentMethodTextActive]}>
+              Wallet {profile ? `($${profile.walletBalance.toFixed(2)})` : ''}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.paymentMethodButton, paymentMethod === 'Cash' && styles.paymentMethodActive]}

@@ -17,7 +17,11 @@ export const LoginScreen = ({ navigation }: Props) => {
     if (!email || !password) return;
     setIsLoading(true);
     try {
-      await firebaseAuth.signInWithEmailAndPassword(email, password);
+      const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
+      // Immediately check verification status upon login button press to ensure AppNavigator handles it properly
+      if (userCredential.user) {
+        await userCredential.user.reload();
+      }
       // AppNavigator will handle the state change via onAuthStateChanged
     } catch (error: any) {
       let errorMessage = 'An unexpected error occurred. Please try again.';
