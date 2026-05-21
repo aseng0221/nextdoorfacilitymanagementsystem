@@ -1,4 +1,4 @@
-import { firebaseFirestore } from './firebase';
+import { firebaseFirestore, firestore } from './firebase';
 import { topUpWallet } from './userService';
 
 export interface Booking {
@@ -44,8 +44,6 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     ...doc.data()
   })) as Booking[];
 };
-
-import firestore from '@react-native-firebase/firestore';
 
 export const uploadPaymentReceipt = async (bookingId: string, receiptUrl: string) => {
   const bookingRef = firebaseFirestore.collection('bookings').doc(bookingId);
