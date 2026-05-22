@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 import { colors } from '../theme/colors';
 import { firebaseAuth } from '../services/firebase';
 import { useAuthStore } from '../store/authStore';
 
-type Props = {
-  navigation: NativeStackNavigationProp<any, any>;
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 export const LoginScreen = ({ navigation }: Props) => {
   const [email, setEmail] = useState('');

@@ -7,16 +7,7 @@ import { Facility } from '../services/facilityService';
 import { Booking, rescheduleBooking } from '../services/bookingService';
 import { useAuthStore } from '../store/authStore';
 
-type RootStackParamList = {
-  ReviewReschedule: {
-    booking: Booking;
-    facility: Facility;
-    newStartTime: number;
-    newEndTime: number;
-    newDurationHours: number;
-    priceDifference: number;
-  };
-};
+import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ReviewReschedule'>;
 
@@ -40,7 +31,7 @@ export const ReviewRescheduleScreen = ({ route, navigation }: Props) => {
     try {
       await rescheduleBooking(booking.id, user.uid, newStartTime, newEndTime, priceDifference);
       Alert.alert('Success', 'Successfully rescheduled booking!', [
-        { text: 'OK', onPress: () => (navigation as any).popTo('BookingHistory') }
+        { text: 'OK', onPress: () => navigation.popTo('BookingHistory', undefined) }
       ]);
     } catch (error: any) {
       console.error("Failed to reschedule", error);
