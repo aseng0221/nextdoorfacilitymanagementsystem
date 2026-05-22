@@ -7,7 +7,9 @@ import { colors } from '../theme/colors';
 import { getFacilityById, Facility } from '../services/facilityService';
 import { getFacilityBookingsByDate, Booking } from '../services/bookingService';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+type RootStackParamList = {
+  Reschedule: { booking: Booking };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reschedule'>;
 
@@ -111,7 +113,7 @@ export const RescheduleScreen = ({ route, navigation }: Props) => {
     const newStartTime = new Date(year, month, day, selectedStartHour, 0, 0).getTime();
     const newEndTime = new Date(year, month, day, selectedStartHour + durationHours, 0, 0).getTime();
 
-    navigation.navigate('ReviewReschedule', {
+    (navigation as any).navigate('ReviewReschedule', {
       booking,
       facility,
       newStartTime,

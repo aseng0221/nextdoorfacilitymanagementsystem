@@ -35,3 +35,14 @@ export const getWalletTransactions = async (
 
   return { transactions, lastVisible };
 };
+
+export const createTopUpRequest = async (userId: string, amount: number, receiptUrl: string) => {
+  const requestRef = firebaseFirestore.collection('topUpRequests').doc();
+  await requestRef.set({
+    userId,
+    amount,
+    receiptUrl,
+    status: 'Pending Verification',
+    createdAt: Date.now(),
+  });
+};

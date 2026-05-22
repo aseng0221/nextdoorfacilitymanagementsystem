@@ -1,30 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { colors } from '../theme/colors';
 import { Booking, uploadPaymentReceipt } from '../services/bookingService';
+import { uploadReceiptToStorage } from '../services/storageService';
+import { useAuthStore } from '../store/authStore';
 
-import type { RootStackParamList } from '../navigation/AppNavigator';
+type RootStackParamList = {
+  BookingDetail: { booking: Booking };
+  Reschedule: { booking: Booking };
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingDetail'>;
 
 export const BookingDetailScreen = ({ route, navigation }: Props) => {
   const { booking } = route.params;
+  const { user } = useAuthStore();
   const [isUploading, setIsUploading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(booking.status);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
 
   const isWithin24Hours = (booking.startTime - Date.now()) < 24 * 60 * 60 * 1000;
   const canReschedule = ['Upcoming', 'Payment Made', 'Pending Payment', 'Pending Verification'].includes(currentStatus);
 
+  const handleSelectReceipt = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 1,
+    });
+
+    if (result.assets && result.assets.length > 0 && result.assets[0].uri) {
+      setReceiptUri(result.assets[0].uri);
+    }
+  };
+
   const handleUploadReceipt = async () => {
+    if (!user) return;
+    if (!receiptUri) {
+      Alert.alert('Missing Receipt', 'Please select a receipt image first.');
+      return;
+    }
+
     setIsUploading(true);
     try {
-      // Simulate receipt upload delay
-      await new Promise(resolve => setTimeout(() => resolve(undefined), 1500));
-
-      const dummyUrl = 'https://example.com/dummy-receipt.png';
-      await uploadPaymentReceipt(booking.id, dummyUrl);
+      const receiptUrl = await uploadReceiptToStorage(user.uid, receiptUri, `booking_${booking.id}`);
+      await uploadPaymentReceipt(booking.id, receiptUrl);
 
       setCurrentStatus('Pending Verification');
       Alert.alert('Success', 'Receipt uploaded successfully. Waiting for admin verification.');
@@ -89,8 +111,46 @@ export const BookingDetailScreen = ({ route, navigation }: Props) => {
         </View>
 
         {currentStatus === 'Pending Payment' && (
-          <View style={styles.actionSection}>
-            <Text style={styles.actionPrompt}>Please upload your payment receipt.</Text>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Bank Transfer Details</Text>
+            <View style={styles.row}>
+              <Text style={styles.label}>Bank Name:</Text>
+              <Text style={styles.value}>Maybank</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Account Number:</Text>
+              <Text style={styles.value}>112233445566</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Account Name:</Text>
+              <Text style={styles.value}>NextDoor Facility Admin</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <Text style={styles.sectionTitle}>DuitNow QR</Text>
+            <View style={styles.qrPlaceholder}>
+              <Text style={styles.qrText}>[ DuitNow QR Image ]</Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.uploadSection}>
+              <Text style={styles.actionPrompt}>Upload your payment receipt below.</Text>
+              {receiptUri ? (
+                <View style={styles.receiptPreviewContainer}>
+                  <Image source={{ uri: receiptUri }} style={styles.receiptPreview} resizeMode="cover" />
+                  <TouchableOpacity style={styles.changeReceiptBtn} onPress={handleSelectReceipt}>
+                    <Text style={styles.changeReceiptText}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.uploadBox} onPress={handleSelectReceipt}>
+                  <Text style={styles.uploadBoxText}>Select Receipt Image</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <TouchableOpacity
               style={[styles.button, styles.uploadButton, isUploading && styles.buttonDisabled]}
               onPress={handleUploadReceipt}
@@ -99,7 +159,7 @@ export const BookingDetailScreen = ({ route, navigation }: Props) => {
               {isUploading ? (
                 <ActivityIndicator color={colors.white} />
               ) : (
-                <Text style={styles.buttonText}>Upload Receipt</Text>
+                <Text style={styles.buttonText}>Submit Receipt</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -112,7 +172,7 @@ export const BookingDetailScreen = ({ route, navigation }: Props) => {
             ) : (
               <TouchableOpacity
                 style={styles.button}
-                onPress={() => navigation.navigate('Reschedule', { booking })}
+                onPress={() => navigation.navigate('Reschedule' as any, { booking })}
               >
                 <Text style={styles.buttonText}>Reschedule Booking</Text>
               </TouchableOpacity>
@@ -198,6 +258,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.primary,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.primaryDark,
+    marginBottom: 12,
+  },
+  qrPlaceholder: {
+    width: 150,
+    height: 150,
+    backgroundColor: '#e0e0e0',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  qrText: {
+    color: colors.textLight,
+    fontWeight: 'bold',
+  },
+  uploadSection: {
+    marginBottom: 16,
+  },
   actionSection: {
     marginBottom: 16,
   },
@@ -206,6 +289,36 @@ const styles = StyleSheet.create({
     color: colors.textLight,
     marginBottom: 12,
     textAlign: 'center',
+  },
+  uploadBox: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  uploadBoxText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  receiptPreviewContainer: {
+    alignItems: 'center',
+  },
+  receiptPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  changeReceiptBtn: {
+    padding: 8,
+  },
+  changeReceiptText: {
+    color: colors.primary,
+    fontWeight: 'bold',
   },
   button: {
     backgroundColor: colors.primary,

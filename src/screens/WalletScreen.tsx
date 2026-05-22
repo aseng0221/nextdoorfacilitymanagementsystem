@@ -7,8 +7,13 @@ import { Plus } from 'lucide-react-native';
 import { useAuthStore } from '../store/authStore';
 import { getUserProfile, UserProfile, topUpWallet } from '../services/userService';
 import { getWalletTransactions, WalletTransaction } from '../services/walletService';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const WalletScreen = () => {
+type Props = {
+  navigation: NativeStackNavigationProp<any, any>;
+};
+
+export const WalletScreen = ({ navigation }: Props) => {
   const { user } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,31 +63,8 @@ export const WalletScreen = () => {
     }
   };
 
-  const handleTopUp = async () => {
-    if (!user) return;
-
-    Alert.alert(
-      "Demo Top Up",
-      "Add $50 to your wallet?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            setIsTopUpLoading(true);
-            try {
-              await topUpWallet(user.uid, 50, 'top_up', 'Wallet Top Up');
-              await loadData();
-            } catch (error) {
-              console.error("Top up failed", error);
-              Alert.alert("Error", "Failed to top up wallet.");
-            } finally {
-              setIsTopUpLoading(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleTopUp = () => {
+    navigation.navigate('TopUp');
   };
 
   const renderItem = ({ item }: { item: WalletTransaction }) => {
