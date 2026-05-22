@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { firebaseAuth } from '../services/firebase';
+import { useAuthStore } from '../store/authStore';
 
 type Props = {
   navigation: NativeStackNavigationProp<any, any>;
@@ -13,16 +14,26 @@ export const LoginScreen = ({ navigation }: Props) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { setIsLoggingIn } = useAuthStore();
+
   const handleLogin = async () => {
     if (!email || !password) return;
     setIsLoading(true);
+    setIsLoggingIn(true);
     try {
       const userCredential = await firebaseAuth.signInWithEmailAndPassword(email, password);
-      // Immediately check verification status upon login button press to ensure AppNavigator handles it properly
+
       if (userCredential.user) {
         await userCredential.user.reload();
+
+        // If the user's email is not verified, explicitly sign them out to prevent navigation
+        if (!userCredential.user.emailVerified) {
+          await firebaseAuth.signOut();
+          Alert.alert('Email Not Verified', 'Please check your email and verify your account before logging in.');
+          return;
+        }
       }
-      // AppNavigator will handle the state change via onAuthStateChanged
+      // Otherwise, AppNavigator will successfully handle the state change
     } catch (error: any) {
       let errorMessage = 'An unexpected error occurred. Please try again.';
 
@@ -44,7 +55,9 @@ export const LoginScreen = ({ navigation }: Props) => {
       }
 
       Alert.alert('Login Failed', errorMessage);
+    } finally {
       setIsLoading(false);
+      setIsLoggingIn(false);
     }
   };
 

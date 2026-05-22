@@ -13,11 +13,13 @@ interface AuthState {
   isLoading: boolean;
   isProfileComplete: boolean;
   isEmailVerified: boolean;
+  isLoggingIn: boolean;
   setUser: (user: User | null) => void;
   setProfile: (profile: UserProfile | null) => void;
   setLoading: (isLoading: boolean) => void;
   setIsProfileComplete: (isComplete: boolean) => void;
   setIsEmailVerified: (isVerified: boolean) => void;
+  setIsLoggingIn: (isLoggingIn: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -26,9 +28,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   isProfileComplete: true,
   isEmailVerified: true,
+  isLoggingIn: false,
   setUser: (user) => set({ user }),
   setProfile: (profile) => set({ profile }),
   setLoading: (isLoading) => set({ isLoading }),
   setIsProfileComplete: (isComplete) => set({ isProfileComplete: isComplete }),
   setIsEmailVerified: (isVerified) => set({ isEmailVerified: isVerified }),
+  setIsLoggingIn: (isLoggingIn) => set({ isLoggingIn }),
 }));
